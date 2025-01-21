@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './App.css'
+import HeaderSection from './HeaderSection.jsx'
 import FileListSection from './FileListSection.jsx'
 import MediaPlayer from './MediaPlayer.jsx'
 import FileEditor from './FileEditor.jsx'
@@ -9,6 +10,7 @@ function App() {
 
   const [audioDatabase, setAudioDatabase] = useState(fileDatabase); 
   const [selectedTrack, setSelectedTrack] = useState(null); 
+  const audioRef = useRef(null); 
 
   useEffect(() => {
     return () => {
@@ -22,13 +24,11 @@ function App() {
 
   return (
     <>
-      <header>
-        <h1>Patrick's mp3 player</h1>
-      </header>
+      <HeaderSection audioRef={audioRef} />
       <main>
-        <FileListSection audioDatabase={audioDatabase} setSelectedTrack={setSelectedTrack} setAudioDatabase={setAudioDatabase} />
+        <FileListSection audioDatabase={audioDatabase} setAudioDatabase={setAudioDatabase} selectedTrack={selectedTrack} setSelectedTrack={setSelectedTrack} />
         <div className="right-section">
-          <MediaPlayer selectedTrack={selectedTrack} />
+          <MediaPlayer selectedTrack={selectedTrack} setSelectedTrack={setSelectedTrack} audioDatabase={audioDatabase} audioRef={audioRef} />
           <FileEditor setAudioDatabase={setAudioDatabase} />
         </div>
       </main>

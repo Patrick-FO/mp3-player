@@ -5,8 +5,24 @@
 
 header {
   display: flex; 
-  justify-content: center; 
+  align-items: center; 
+  justify-content: space-between; 
+  padding: 2em;
   border-bottom: solid 1px hsla(0, 0%, 70%, 0.5); 
+}
+
+h1 {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.volume-slider-section {
+  margin-left: auto;
+}
+
+.volume-slider-section input {
+  margin: 1em; 
 }
 
 main {
@@ -40,6 +56,10 @@ main {
   padding: 0.5em;
   border: solid 1px hsla(0, 0%, 70%, 0.5); 
   margin: 0.5em;
+}
+
+.file-list li:hover {
+  background-color: #dcf2ff58 !important; 
 }
 
 .file-list h2 {
@@ -83,6 +103,9 @@ main {
 }
 
 .media-player {
+  display: flex;
+  flex-direction: column; 
+  align-items: center;
   width: 80%;
   text-align: center; 
   border: solid 1px hsla(0, 0%, 70%, 0.5); 
@@ -91,9 +114,38 @@ main {
   padding: 2em; 
 }
 
+.media-player h2 {
+  margin: 1em 1em 2em 1em; 
+}
+
 .media-player img {
   width: 20em; 
   height: auto; 
+}
+
+.media-player audio {
+  display: none;
+}
+
+.button-section {
+  display: inline-flex; 
+  margin: 0;
+}
+
+.button {
+  cursor: pointer; 
+  scale: 3;
+  margin: 3em; 
+}
+
+.slider-section {
+  display: inline-flex; 
+  width: 80%; 
+}
+
+.slider {
+  width: 100%; 
+  padding: 0; 
 }
 
 .file-editor {

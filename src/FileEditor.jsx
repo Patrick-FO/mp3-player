@@ -15,7 +15,6 @@ function FileEditor({ setAudioDatabase }) {
                 fileSource: file, 
                 title: title, 
                 cover: cover, 
-                // url: URL.createObjectURL(file)
             }
             return [newTrack, ...prev]; 
         })
