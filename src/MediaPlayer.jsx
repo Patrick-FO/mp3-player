@@ -39,47 +39,54 @@ function MediaPlayer({ selectedTrack, setSelectedTrack, audioDatabase, audioRef 
     const previousHandler = () => {
         const currentIndex = audioDatabase.findIndex(track => track.id === selectedTrack.id);
         if (currentIndex > 0) {
-            const previousTrack = audioDatabase[currentIndex - 1]; 
-            const trackWithUrl = {
-                ...previousTrack,
-                audioUrl: URL.createObjectURL(previousTrack.fileSource),
-                coverUrl: previousTrack.cover ? URL.createObjectURL(previousTrack.cover) : null
-            };
-            setSelectedTrack(trackWithUrl);
+            const previousTrack = audioDatabase[currentIndex - 1];
+            setSelectedTrack(previousTrack); 
         }
     }
-
+    
     const nextHandler = () => {
         const currentIndex = audioDatabase.findIndex(track => track.id === selectedTrack.id);
         if (currentIndex + 1 < audioDatabase.length) {
             const nextTrack = audioDatabase[currentIndex + 1];
-            const trackWithUrl = {
-                ...nextTrack,
-                audioUrl: URL.createObjectURL(nextTrack.fileSource),
-                coverUrl: nextTrack.cover ? URL.createObjectURL(nextTrack.cover) : null
-            };
-        setSelectedTrack(trackWithUrl);
+            setSelectedTrack(nextTrack); 
         }
     }
 
     useEffect(() => {
-        return () => {
-            if (selectedTrack) {
-                if (selectedTrack.audioUrl) {
-                    URL.revokeObjectURL(selectedTrack.audioUrl);
-                }
-                if (selectedTrack.coverUrl) {
-                    URL.revokeObjectURL(selectedTrack.coverUrl); 
-                }
-            }
-        };
-    }, [selectedTrack?.id]); 
 
-    useEffect(() => {
+        if (!selectedTrack) return;
+        console.log('Selected Track Details:', {
+            id: selectedTrack.id,
+            title: selectedTrack.title,
+            url: selectedTrack.audioUrl
+        });
+    
+        fetch(selectedTrack.audioUrl)
+            .then(response => {
+                console.log('URL Response:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries())
+                });
+                return response.blob();
+            })
+            .then(blob => {
+                console.log('Content Type:', blob.type);
+            })
+            .catch(error => {
+                console.error('Fetch Error:', error);
+            });
+
         if (!audioRef.current) return;
         
         const audio = audioRef.current;
+        console.log('Loading audio URL:', selectedTrack?.audioUrl);
         audio.load();
+
+        audio.addEventListener('error', (e) => {
+            console.error('Audio error:', e);
+            console.error('Audio error details:', audio.error);
+        });
 
         if (playing) {
             const playWhenReady = () => {
@@ -136,10 +143,27 @@ function MediaPlayer({ selectedTrack, setSelectedTrack, audioDatabase, audioRef 
 
     return (
         <div className="media-player">
+            {console.log('Selected Track:', selectedTrack)}
+            {console.log('Audio URL:', selectedTrack?.audioUrl)}
             <h2>Media Player</h2>
             {selectedTrack.coverUrl && <img src={selectedTrack.coverUrl} />}
             <h3>{selectedTrack.title}</h3>
-            <audio controls src={selectedTrack.audioUrl} ref={audioRef} /> 
+            <audio 
+                ref={audioRef}
+                preload="metadata"
+                onError={(e) => {
+                    console.error('Audio Error:', {
+                        error: e.target.error,
+                        networkState: audioRef.current.networkState,
+                        readyState: audioRef.current.readyState,
+                        src: audioRef.current.src
+                    });
+                }}
+            > 
+                <source src={selectedTrack.audioUrl} type="audio/mpeg" />
+                <source src={selectedTrack.audioUrl} type="audio/mp3" />
+                Your browser does not support the audio element.
+            </audio>
             <div className="slider-section">
                 <p>{formatTime(currentTime)}</p>
                 <input
@@ -160,13 +184,13 @@ function MediaPlayer({ selectedTrack, setSelectedTrack, audioDatabase, audioRef 
                     <IoPlayBackCircle 
                         className="button" 
                         onClick={rewindHandler} 
-                        onDoubleClick={nextHandler}
+                        onDoubleClick={previousHandler}
                         onMouseLeave={() => setHoveredButton(null)}
                     /> :
                     <IoPlayBackCircleOutline 
                         className="button" 
                         onClick={rewindHandler} 
-                        onDoubleClick={nextHandler}
+                        onDoubleClick={previousHandler}
                         onMouseEnter={() => setHoveredButton('rewind')}
                     />
                 }
@@ -201,12 +225,12 @@ function MediaPlayer({ selectedTrack, setSelectedTrack, audioDatabase, audioRef 
                 {hoveredButton === 'forward' ? 
                     <IoPlayForwardCircle 
                         className="button" 
-                        onClick={previousHandler}
+                        onClick={nextHandler}
                         onMouseLeave={() => setHoveredButton(null)}
                     /> :
                     <IoPlayForwardCircleOutline 
                         className="button" 
-                        onClick={previousHandler}
+                        onClick={nextHandler}
                         onMouseEnter={() => setHoveredButton('forward')}
                     />
                 }

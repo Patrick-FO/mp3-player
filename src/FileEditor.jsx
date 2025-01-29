@@ -1,31 +1,58 @@
-import React, { useState } from 'react'
+import React, { useState } from 'react';
+import { auth } from './firebase.js';  
 
 function FileEditor({ setAudioDatabase }) {
 
     const [file, setFile] = useState(null); 
     const [title, setTitle] = useState('Your MP3'); 
     const [cover, setCover] = useState(null); 
+    const [uploadStatus, setUploadStatus] = useState('');
 
-    const submitHandler = (e) => {
-        e.preventDefault(); 
-
-        setAudioDatabase((prev) => {
-            const newTrack = {
-                id: Date.now(),
-                fileSource: file, 
-                title: title, 
-                cover: cover, 
-            }
-            return [newTrack, ...prev]; 
-        })
-
-        setFile(null); 
-        setTitle(''); 
-        setCover(null); 
-
-        e.target.reset; 
-
-    }
+    const submitHandler = async (e) => {
+      e.preventDefault();
+      
+      const token = await auth.currentUser.getIdToken();
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', title);
+      if (cover) {
+          formData.append('coverImage', cover);
+      }
+  
+      try {
+          setUploadStatus('Uploading...');
+          
+          const response = await fetch('http://localhost:5000/api/tracks/upload', {
+              method: 'POST',
+              headers: {
+                  'Authorization': `Bearer ${token}`
+              },
+              body: formData
+          });
+  
+          if (!response.ok) {
+              throw new Error('Upload failed');
+          }
+  
+          const tracksResponse = await fetch('http://localhost:5000/api/tracks', {
+              headers: {
+                  'Authorization': `Bearer ${token}`
+              }
+          });
+          const tracks = await tracksResponse.json();
+          setAudioDatabase(tracks);
+          
+          setUploadStatus('Upload successful!');
+          setFile(null);
+          setTitle('');
+          setCover(null);
+          e.target.reset();
+          
+      } catch (error) {
+          console.error('Error:', error);
+          setUploadStatus('Upload failed');
+      }
+  };
 
     return (
         <div className="file-editor">
@@ -62,7 +89,7 @@ function FileEditor({ setAudioDatabase }) {
                         type="file" 
                         id="cover" 
                         name="cover" 
-                        accept="image/png, image/jpg" 
+                        accept="image/png, image/jpg, image/jpeg" 
                         onChange={(e) => setCover(e.target.files[0])}
                     />
                 </div>

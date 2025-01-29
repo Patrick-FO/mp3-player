@@ -1,8 +1,22 @@
-# React + Vite
+# MP3 Player 
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-stack MP3 player application built with React and Node.js.
 
-Currently, two official plugins are available:
+## Technologies
+- Frontend: React, Tailwind CSS
+- Backend: Node.js, Express
+- Database: Firebase
+- Storage: AWS S3
+- Authentication: Firebase authentication
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
+- Create account, login and access a personal AWS S3 bucket
+- Upload and store MP3 files
+- Play music with custom controls
+- Volume control
+
+### Login page
+![Login page](./assets/mp3-player-login-screen.JPG)
+
+### Main page
+![Main page](./assets/mp3-player-main-screen.JPG)

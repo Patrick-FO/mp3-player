@@ -1,41 +1,41 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useEffect } from 'react';
+import { auth } from './firebase.js';  
 
 function FileListSection({ audioDatabase, setAudioDatabase, selectedTrack, setSelectedTrack }) {
 
-    const createTrackWithUrls = useCallback((audio) => {
-      try {
-          return {
-              ...audio,
-              audioUrl: URL.createObjectURL(audio.fileSource),
-              coverUrl: audio.cover ? URL.createObjectURL(audio.cover) : null
-          };
-      } catch (error) {
-          console.error('Error creating URLs for track:', error);
-          return null;
-      }
-    }, []);
-
-    const cleanupTrackUrls = useCallback((track) => {
-        if (!track) return;
+    useEffect(() => {
+        const fetchTracks = async () => {
+        if (!auth.currentUser) return; 
         
         try {
-            if (track.audioUrl) {
-                URL.revokeObjectURL(track.audioUrl);
+            const token = await auth.currentUser.getIdToken();
+            const response = await fetch('http://localhost:5000/api/tracks', {
+            headers: {
+                'Authorization': `Bearer ${token}`
             }
-            if (track.coverUrl) {
-                URL.revokeObjectURL(track.coverUrl);
-            }
+            });
+            const tracks = await response.json();
+            setAudioDatabase(tracks);
         } catch (error) {
-            console.error('Error cleaning up track URLs:', error);
+            console.error('Error fetching tracks:', error);
         }
+        };
+    
+        fetchTracks();
+    }, []);
+
+    const createTrackWithUrls = useCallback((audio) => {
+        return {
+            ...audio,
+            audioUrl: audio.audioUrl, 
+            coverUrl: audio.coverUrl 
+        };
     }, []);
 
     const handleClickSelect = useCallback((audio) => {
         if (!audio || selectedTrack?.id === audio.id) return;
-
+        
         try {
-            cleanupTrackUrls(selectedTrack);
-            
             const trackWithUrl = createTrackWithUrls(audio);
             if (trackWithUrl) {
                 setSelectedTrack(trackWithUrl);
@@ -43,40 +43,32 @@ function FileListSection({ audioDatabase, setAudioDatabase, selectedTrack, setSe
         } catch (error) {
             console.error('Error selecting track:', error);
         }
-    }, [selectedTrack, cleanupTrackUrls, createTrackWithUrls]);
+    }, [selectedTrack, createTrackWithUrls]);
 
-    const handleClickRemove = useCallback((index, event) => {
+      const handleClickRemove = async (index, event) => {
         event.stopPropagation();
         
         try {
-            const audioToRemove = audioDatabase[index];
-            const isRemovingSelected = selectedTrack?.id === audioToRemove?.id;
-
-            const newDatabase = audioDatabase.filter((_, i) => i !== index);
-            
-            if (isRemovingSelected) {
-                cleanupTrackUrls(selectedTrack);
-
-                if (newDatabase.length > 0) {
-                    const nextIndex = Math.min(index, newDatabase.length - 1);
-                    const nextTrack = newDatabase[nextIndex];
-                    const nextTrackWithUrl = createTrackWithUrls(nextTrack);
-                    
-                    setAudioDatabase(newDatabase);
-                    if (nextTrackWithUrl) {
-                        setSelectedTrack(nextTrackWithUrl);
-                    }
-                } else {
-                    setAudioDatabase([]);
-                    setSelectedTrack(null);
+            const token = await auth.currentUser.getIdToken();
+            const trackToRemove = audioDatabase[index];
+            const response = await fetch(`http://localhost:5000/api/tracks/${trackToRemove.id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
                 }
-            } else {
-                setAudioDatabase(newDatabase);
+            });
+    
+            if (!response.ok) {
+                throw new Error('Failed to delete track');
             }
+    
+            const newDatabase = audioDatabase.filter((_, i) => i !== index);
+            setAudioDatabase(newDatabase);
+            
         } catch (error) {
             console.error('Error removing track:', error);
         }
-  }, [audioDatabase, selectedTrack, cleanupTrackUrls, createTrackWithUrls]);
+    };
 
     return (
         <div className="file-list">
