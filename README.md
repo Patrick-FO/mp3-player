@@ -19,4 +19,7 @@ A full-stack MP3 player application built with React and Node.js.
 ![Login page](./assets/mp3-player-login-screen.JPG)
 
 ### Main page
-![Main page](./assets/mp3-player-main-screen.JPG)
+
+![mp3-player-login-screen](https://github.com/user-attachments/assets/a6042321-8f22-4f63-9a21-275eab46a581)
+
+![mp3-player-main-screen](https://github.com/user-attachments/assets/b2c49b4f-7e0b-4b23-a36c-6d1c6c84e0b7)
