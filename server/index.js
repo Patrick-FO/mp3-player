@@ -5,7 +5,7 @@ import trackRoutes from './routes/trackRoutes.js';
 import fileUpload from 'express-fileupload';
 
 const app = express();
-const PORT = process.env.PORT || 8081;
+const PORT = process.env.PORT || 8080;
 
 app.use(cors({
   origin: ['https://patrick-fo.github.io', 'http://localhost:5173'], 

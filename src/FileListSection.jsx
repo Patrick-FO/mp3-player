@@ -52,7 +52,7 @@ function FileListSection({ audioDatabase, setAudioDatabase, selectedTrack, setSe
         try {
             const token = await auth.currentUser.getIdToken();
             const trackToRemove = audioDatabase[index];
-            const response = await fetch(`production-env.eba-fbx3qqzr.eu-north-1.elasticbeanstalk.com/api/tracks/${trackToRemove.id}`, {
+            const response = await fetch(`${API_BASE_URL}/api/tracks/${trackToRemove.id}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`
