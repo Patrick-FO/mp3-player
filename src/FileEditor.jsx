@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { auth } from './firebase.js';  
+import { auth } from './firebase.js'; 
+import { API_BASE_URL } from './config.js';
 
 function FileEditor({ setAudioDatabase }) {
 
@@ -22,7 +23,7 @@ function FileEditor({ setAudioDatabase }) {
       try {
           setUploadStatus('Uploading...');
           
-          const response = await fetch('http://production-env.eba-fbx3qqzr.eu-north-1.elasticbeanstalk.com/api/tracks/upload', {
+          const response = await fetch(`${API_BASE_URL}/api/tracks/upload`, {
               method: 'POST',
               headers: {
                   'Authorization': `Bearer ${token}`
@@ -34,7 +35,7 @@ function FileEditor({ setAudioDatabase }) {
               throw new Error('Upload failed');
           }
   
-          const tracksResponse = await fetch('http://production-env.eba-fbx3qqzr.eu-north-1.elasticbeanstalk.com/api/tracks', {
+          const tracksResponse = await fetch(`${API_BASE_URL}/api/tracks`, {
               headers: {
                   'Authorization': `Bearer ${token}`
               }

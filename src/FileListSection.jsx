@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import { auth } from './firebase.js';  
+import { API_BASE_URL } from './config.js';
 
 function FileListSection({ audioDatabase, setAudioDatabase, selectedTrack, setSelectedTrack }) {
 
@@ -9,7 +10,7 @@ function FileListSection({ audioDatabase, setAudioDatabase, selectedTrack, setSe
         
         try {
             const token = await auth.currentUser.getIdToken();
-            const response = await fetch('http://production-env.eba-fbx3qqzr.eu-north-1.elasticbeanstalk.com/api/tracks', {
+            const response = await fetch(`${API_BASE_URL}/api/tracks`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
