@@ -13,9 +13,8 @@ app.use(cors({
   credentials: true
 }));
 
-// app.use(fileUpload());
 app.use(fileUpload({
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  limits: { fileSize: 50 * 1024 * 1024 }, 
   useTempFiles: true
 }));
 app.use(express.json());
