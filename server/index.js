@@ -3,27 +3,25 @@ import express from 'express';
 import cors from 'cors';
 import trackRoutes from './routes/trackRoutes.js';
 import fileUpload from 'express-fileupload';
-import path from 'path';
-import { fileURLToPath } from 'url'; // Add this line
 
 const app = express();
 const PORT = process.env.PORT || 8081;
 
-// Get the directory name in ES module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+app.use(cors({
+  origin: ['https://patrick-fo.github.io', 'http://localhost:5173'], 
+  methods: ['GET', 'POST', 'DELETE'],
+  credentials: true
+}));
 
-// Serve static files from the React build directory
-app.use(express.static(path.join(__dirname, 'dist')));
-
-app.use(cors());
 app.use(express.json());
-app.use('/api/tracks', trackRoutes);
 app.use(fileUpload());
+app.use('/api/tracks', trackRoutes);
 
-// Catch-all handler to serve the index.html for any unhandled routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'MP3 Player API is running',
+    status: 'healthy'
+  });
 });
 
 app.listen(PORT, () => {
