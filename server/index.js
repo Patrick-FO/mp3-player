@@ -13,8 +13,8 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json());
 app.use(fileUpload());
+app.use(express.json());
 app.use('/api/tracks', trackRoutes);
 
 app.get('/', (req, res) => {

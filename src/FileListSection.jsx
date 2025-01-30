@@ -9,7 +9,7 @@ function FileListSection({ audioDatabase, setAudioDatabase, selectedTrack, setSe
         
         try {
             const token = await auth.currentUser.getIdToken();
-            const response = await fetch('production-env.eba-fbx3qqzr.eu-north-1.elasticbeanstalk.com/api/tracks', {
+            const response = await fetch('http://production-env.eba-fbx3qqzr.eu-north-1.elasticbeanstalk.com/api/tracks', {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
