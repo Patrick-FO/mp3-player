@@ -16,19 +16,16 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 
+app.use(fileUpload());
 app.use(express.json());
-app.use(fileUpload({
-  limits: { fileSize: 50 * 1024 * 1024 }, 
-  useTempFiles: true
-}));
 app.use('/api/tracks', trackRoutes);
 
-app.get('/', (req, res) => {
-  res.json({ 
-    message: 'MP3 Player API is running',
-    status: 'healthy'
-  });
-});
+// app.get('/', (req, res) => {
+//   res.json({ 
+//     message: 'MP3 Player API is running',
+//     status: 'healthy'
+//   });
+// });
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
