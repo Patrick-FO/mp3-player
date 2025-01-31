@@ -5,6 +5,11 @@ import s3Client from '../config/s3.js';
 
 const uploadTrack = async (req, res) => {
   try {
+    console.log('Upload request received:', {
+      files: req.files ? Object.keys(req.files) : 'no files',
+      userId: req.user?.uid
+    });
+
     if (!req.files || !req.files.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
@@ -13,6 +18,9 @@ const uploadTrack = async (req, res) => {
     const userBucketName = `${process.env.AWS_BUCKET_NAME}-${userId.toLowerCase().replace(/[^a-z0-9-]/g, '-')}`;
 
     try {
+      console.log('Configuring bucket:', userBucketName);
+
+      // Create bucket if it doesn't exist
       await s3Client.send(new CreateBucketCommand({
         Bucket: userBucketName,
         CreateBucketConfiguration: {
@@ -20,6 +28,7 @@ const uploadTrack = async (req, res) => {
         }
       }));
 
+      // Configure bucket access
       await s3Client.send(new PutPublicAccessBlockCommand({
         Bucket: userBucketName,
         PublicAccessBlockConfiguration: {
@@ -30,6 +39,7 @@ const uploadTrack = async (req, res) => {
         }
       }));
 
+      // Set bucket policy
       const bucketPolicy = {
         Version: '2012-10-17',
         Statement: [
@@ -54,6 +64,7 @@ const uploadTrack = async (req, res) => {
         Policy: JSON.stringify(bucketPolicy)
       }));
 
+      // Set CORS rules
       const corsRules = {
         CORSRules: [
           {
@@ -83,6 +94,13 @@ const uploadTrack = async (req, res) => {
     const title = req.body.title || file.name;
     
     try {
+      console.log('Uploading file:', {
+        name: file.name,
+        size: file.size,
+        type: file.mimetype
+      });
+
+      // Upload audio file
       const audioKey = `tracks/${Date.now()}-${file.name}`;
       await s3Client.send(new PutObjectCommand({
         Bucket: userBucketName,
@@ -91,6 +109,7 @@ const uploadTrack = async (req, res) => {
         ContentType: file.mimetype
       }));
 
+      // Prepare document data
       const documentData = {
         title,
         audioUrl: `https://${userBucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${audioKey}`,
@@ -98,7 +117,14 @@ const uploadTrack = async (req, res) => {
         coverUrl: null 
       };
 
+      // Handle cover image if provided
       if (req.files.coverImage) {
+        console.log('Uploading cover image:', {
+          name: req.files.coverImage.name,
+          size: req.files.coverImage.size,
+          type: req.files.coverImage.mimetype
+        });
+
         const coverKey = `covers/${Date.now()}-${req.files.coverImage.name}`;
         await s3Client.send(new PutObjectCommand({
           Bucket: userBucketName,
@@ -109,13 +135,16 @@ const uploadTrack = async (req, res) => {
         documentData.coverUrl = `https://${userBucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${coverKey}`;
       }
 
+      // Save to Firebase
       const trackRef = await db.collection('users')
         .doc(userId)
         .collection('tracks')
         .add(documentData);
 
-      console.log('Track saved to Firebase:', trackRef.id);
-      console.log('Document data:', documentData);  
+      console.log('Track saved successfully:', {
+        trackId: trackRef.id,
+        documentData
+      });
 
       res.status(201).json({ 
         message: 'Track uploaded successfully',
@@ -127,15 +156,23 @@ const uploadTrack = async (req, res) => {
     }
   } catch (error) {
     console.error('Error in uploadTrack:', error);
-    res.status(500).json({ error: 'Failed to upload track' });
+    res.status(500).json({ 
+      error: 'Failed to upload track',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
 const getTracks = async (req, res) => {
   try {
-    console.log('Getting tracks for user:', req.user?.uid);
+    console.log('Fetching tracks for user:', req.user?.uid);
     
-    const tracksSnapshot = await db.collection('users').doc(req.user.uid).collection('tracks').get();
+    const tracksSnapshot = await db.collection('users')
+      .doc(req.user.uid)
+      .collection('tracks')
+      .orderBy('createdAt', 'desc')
+      .get();
+
     const tracks = [];
     
     tracksSnapshot.forEach((doc) => {
@@ -145,10 +182,14 @@ const getTracks = async (req, res) => {
       });
     });
 
+    console.log(`Retrieved ${tracks.length} tracks`);
     res.json(tracks);
   } catch (error) {
     console.error('Error getting tracks:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
@@ -158,57 +199,66 @@ const deleteTrack = async (req, res) => {
     const userId = req.user.uid;
     const userBucketName = `${process.env.AWS_BUCKET_NAME}-${userId.toLowerCase().replace(/[^a-z0-9-]/g, '-')}`;
 
-    const trackDoc = await db.collection('users').doc(userId).collection('tracks').doc(id).get();
+    console.log('Deleting track:', { trackId: id, userId });
+
+    const trackDoc = await db.collection('users')
+      .doc(userId)
+      .collection('tracks')
+      .doc(id)
+      .get();
 
     if (!trackDoc.exists) {
       return res.status(404).json({ error: 'Track not found' });
     }
 
     const data = trackDoc.data();
-    console.log('Deleting track with data:', data); 
+    console.log('Track data:', data);
 
     try {
+      // Delete audio file
       const audioUrl = new URL(data.audioUrl);
-      const audioKey = decodeURIComponent(audioUrl.pathname.substring(1)); 
-      console.log('Attempting to delete audio file with key:', audioKey); 
+      const audioKey = decodeURIComponent(audioUrl.pathname.substring(1));
+      console.log('Deleting audio file:', audioKey);
 
       await s3Client.send(new DeleteObjectCommand({
         Bucket: userBucketName,
         Key: audioKey
       }));
-      console.log('Successfully deleted audio file from S3');
 
+      // Delete cover image if exists
       if (data.coverUrl) {
         const coverUrl = new URL(data.coverUrl);
         const coverKey = decodeURIComponent(coverUrl.pathname.substring(1));
-        console.log('Attempting to delete cover image with key:', coverKey); 
+        console.log('Deleting cover image:', coverKey);
 
         await s3Client.send(new DeleteObjectCommand({
           Bucket: userBucketName,
           Key: coverKey
         }));
-        console.log('Successfully deleted cover image from S3');
       }
-    } catch (s3Error) {
-      console.error('Error deleting from S3:', s3Error);
-    }
 
-    try {
-      await db.collection('users').doc(userId).collection('tracks').doc(id).delete();
-      console.log('Successfully deleted track from Firebase');
-    } catch (firestoreError) {
-      console.error('Error deleting from Firestore:', firestoreError);
-      throw firestoreError;
-    }
+      // Delete from Firebase
+      await db.collection('users')
+        .doc(userId)
+        .collection('tracks')
+        .doc(id)
+        .delete();
 
-    res.json({ 
-      message: 'Track deleted successfully',
-      trackId: id,
-      s3Bucket: userBucketName
-    });
+      console.log('Track deleted successfully');
+      res.json({ 
+        message: 'Track deleted successfully',
+        trackId: id
+      });
+    } catch (error) {
+      console.error('Error during deletion:', error);
+      throw error;
+    }
   } catch (error) {
     console.error('Error in deleteTrack:', error);
-    res.status(500).json({ error: 'Failed to delete track' });
+    res.status(500).json({ 
+      error: 'Failed to delete track',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
