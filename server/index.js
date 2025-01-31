@@ -5,14 +5,15 @@ import trackRoutes from './routes/trackRoutes.js';
 import fileUpload from 'express-fileupload';
 
 const app = express();
-const PORT = process.env.PORT || 8081;
+const PORT = process.env.PORT || 5000;
 
 app.set('trust proxy', 1);
 
 app.use(cors({
-  origin: ['https://patrick-fo.github.io', 'http://localhost:5173', 'http://production-env.eba-fbx3qqzr.eu-north-1.elasticbeanstalk.com'], 
+  origin: ['https://patrick-fo.github.io', 'http://localhost:5173'], 
   methods: ['GET', 'POST', 'DELETE'],
-  credentials: true
+  credentials: true, 
+  optionsSuccessStatus: 200
 }));
 
 app.use(express.json());
@@ -29,6 +30,6 @@ app.get('/', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });

@@ -1,0 +1,7 @@
+[build]
+builder = "NIXPACKS"
+dockerfilePath = "./server/Dockerfile"
+
+[deploy]
+startCommand = "cd server && npm start"
+rootDirectory = "server"
