@@ -16,8 +16,20 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 
-app.use(fileUpload());
+app.use(fileUpload({
+  useTempFiles: true,
+  tempFileDir: '/tmp/',
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  debug: true // Add this for debugging
+}));
+
 app.use(express.json());
+app.use('/api/tracks', trackRoutes);
+
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ error: err.message });
+});
 
 app.get('/', (req, res) => {
   res.json({ 
@@ -25,8 +37,6 @@ app.get('/', (req, res) => {
     status: 'healthy'
   });
 });
-
-app.use('/api/tracks', trackRoutes);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
