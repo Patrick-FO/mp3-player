@@ -15,26 +15,19 @@ function FileEditor({ setAudioDatabase }) {
             const token = await auth.currentUser.getIdToken();
             const formData = new FormData();
             
-            if (file) {
-                formData.append('file', file, file.name);
-                console.log('Adding file:', { 
-                    name: file.name, 
-                    size: file.size, 
-                    type: file.type 
-                });
-            }
-            
+            console.log('File details:', {
+                name: file.name,
+                size: file.size,
+                type: file.type
+            });
+    
+            formData.append('file', file, file.name);
             formData.append('title', title);
-            
+    
             if (cover) {
                 formData.append('coverImage', cover, cover.name);
-                console.log('Adding cover:', { 
-                    name: cover.name, 
-                    size: cover.size, 
-                    type: cover.type 
-                });
             }
-
+    
             setUploadStatus('Uploading...');
             
             const response = await fetch(`${API_BASE_URL}/api/tracks/upload`, {
@@ -42,8 +35,14 @@ function FileEditor({ setAudioDatabase }) {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 },
+                credentials: 'include',
                 body: formData
             });
+    
+            const responseData = await response.json();
+            if (!response.ok) {
+                throw new Error(responseData.error || 'Upload failed');
+            }
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => null);

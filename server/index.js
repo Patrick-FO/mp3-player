@@ -15,15 +15,10 @@ app.use(cors({
 }));
 
 app.use(fileUpload({
-  limits: { 
-    fileSize: 50 * 1024 * 1024 
-  },
+  createParentPath: true,
+  limits: { fileSize: 50 * 1024 * 1024 },
   useTempFiles: false,
-  debug: true,
-  safeFileNames: true,
-  preserveExtension: 4,
-  abortOnLimit: true,
-  responseOnLimit: "File size limit exceeded"
+  debug: true
 }));
 
 app.use(express.json());
@@ -40,6 +35,15 @@ app.use((req, res, next) => {
     })));
   }
   next();
+});
+
+app.use((err, req, res, next) => {
+  if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({
+          error: 'File too large'
+      });
+  }
+  next(err);
 });
 
 app.get('/', (req, res) => {
