@@ -4,13 +4,16 @@ import { db } from '../config/firebase.js';
 import s3Client from '../config/s3.js';
 
 const uploadTrack = async (req, res) => {
+  
   try {
-    console.log('Upload request received:', {
-      files: req.files ? Object.keys(req.files) : 'no files',
-      userId: req.user?.uid
+    console.log('Request received:', {
+      headers: req.headers,
+      files: req.files ? Object.keys(req.files).length : 0,
+      body: req.body
     });
 
     if (!req.files || !req.files.file) {
+      console.log('No files found in request');
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
@@ -20,7 +23,6 @@ const uploadTrack = async (req, res) => {
     try {
       console.log('Configuring bucket:', userBucketName);
 
-      // Create bucket if it doesn't exist
       await s3Client.send(new CreateBucketCommand({
         Bucket: userBucketName,
         CreateBucketConfiguration: {
@@ -28,7 +30,6 @@ const uploadTrack = async (req, res) => {
         }
       }));
 
-      // Configure bucket access
       await s3Client.send(new PutPublicAccessBlockCommand({
         Bucket: userBucketName,
         PublicAccessBlockConfiguration: {
@@ -39,7 +40,6 @@ const uploadTrack = async (req, res) => {
         }
       }));
 
-      // Set bucket policy
       const bucketPolicy = {
         Version: '2012-10-17',
         Statement: [
@@ -64,7 +64,6 @@ const uploadTrack = async (req, res) => {
         Policy: JSON.stringify(bucketPolicy)
       }));
 
-      // Set CORS rules
       const corsRules = {
         CORSRules: [
           {
@@ -100,7 +99,6 @@ const uploadTrack = async (req, res) => {
         type: file.mimetype
       });
 
-      // Upload audio file
       const audioKey = `tracks/${Date.now()}-${file.name}`;
       await s3Client.send(new PutObjectCommand({
         Bucket: userBucketName,
@@ -109,7 +107,6 @@ const uploadTrack = async (req, res) => {
         ContentType: file.mimetype
       }));
 
-      // Prepare document data
       const documentData = {
         title,
         audioUrl: `https://${userBucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${audioKey}`,
@@ -117,7 +114,6 @@ const uploadTrack = async (req, res) => {
         coverUrl: null 
       };
 
-      // Handle cover image if provided
       if (req.files.coverImage) {
         console.log('Uploading cover image:', {
           name: req.files.coverImage.name,
@@ -135,7 +131,6 @@ const uploadTrack = async (req, res) => {
         documentData.coverUrl = `https://${userBucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${coverKey}`;
       }
 
-      // Save to Firebase
       const trackRef = await db.collection('users')
         .doc(userId)
         .collection('tracks')
@@ -215,7 +210,6 @@ const deleteTrack = async (req, res) => {
     console.log('Track data:', data);
 
     try {
-      // Delete audio file
       const audioUrl = new URL(data.audioUrl);
       const audioKey = decodeURIComponent(audioUrl.pathname.substring(1));
       console.log('Deleting audio file:', audioKey);
@@ -225,7 +219,6 @@ const deleteTrack = async (req, res) => {
         Key: audioKey
       }));
 
-      // Delete cover image if exists
       if (data.coverUrl) {
         const coverUrl = new URL(data.coverUrl);
         const coverKey = decodeURIComponent(coverUrl.pathname.substring(1));
@@ -237,7 +230,6 @@ const deleteTrack = async (req, res) => {
         }));
       }
 
-      // Delete from Firebase
       await db.collection('users')
         .doc(userId)
         .collection('tracks')
