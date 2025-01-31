@@ -9,10 +9,15 @@ const PORT = process.env.PORT || 8080;
 
 app.use(cors({
   origin: ['https://patrick-fo.github.io', 'http://localhost:5173'],
-  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS', 'PUT'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Content-Length', 'X-Requested-With'],
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  maxAge: 3600
 }));
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 app.use(fileUpload({
   createParentPath: true,
@@ -21,8 +26,7 @@ app.use(fileUpload({
   debug: true
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.options('*', cors());
 
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);

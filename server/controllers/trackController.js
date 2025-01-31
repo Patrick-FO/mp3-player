@@ -6,11 +6,9 @@ import s3Client from '../config/s3.js';
 const uploadTrack = async (req, res) => {
   
   try {
-    console.log('Request received:', {
-      headers: req.headers,
-      files: req.files ? Object.keys(req.files).length : 0,
-      body: req.body
-    });
+    console.log('Upload request received');
+    console.log('Headers:', req.headers);
+    console.log('Files:', req.files ? Object.keys(req.files) : 'No files');
 
     if (!req.files || !req.files.file) {
       console.log('No files found in request');
