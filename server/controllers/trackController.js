@@ -11,7 +11,7 @@ const uploadTrack = async (req, res) => {
       'content-length': req.headers['content-length'],
       'transfer-encoding': req.headers['transfer-encoding']
     });
-    
+
     if (!req.files || !req.files.file) {
       console.log('Files object:', req.files);
       console.log('Request body:', req.body);
@@ -22,13 +22,21 @@ const uploadTrack = async (req, res) => {
       });
     }
 
-    // Log file details
+    const file = req.files.file;
     console.log('Received file:', {
-      name: req.files.file.name,
-      size: req.files.file.size,
-      mimetype: req.files.file.mimetype,
-      tempFilePath: req.files.file.tempFilePath
+      name: file.name,
+      size: file.size,
+      mimetype: file.mimetype,
+      md5: file.md5
     });
+
+    // Validate file size
+    if (file.size > 50 * 1024 * 1024) {
+      return res.status(413).json({
+        error: 'File too large',
+        maxSize: '50MB'
+      });
+    }
 
     const userId = req.user.uid;
     const userBucketName = `${process.env.AWS_BUCKET_NAME}-${userId.toLowerCase().replace(/[^a-z0-9-]/g, '-')}`;
@@ -36,88 +44,79 @@ const uploadTrack = async (req, res) => {
     try {
       console.log('Configuring bucket:', userBucketName);
 
-      await s3Client.send(new CreateBucketCommand({
-        Bucket: userBucketName,
-        CreateBucketConfiguration: {
-          LocationConstraint: process.env.AWS_REGION
-        }
-      }));
-
-      await s3Client.send(new PutPublicAccessBlockCommand({
-        Bucket: userBucketName,
-        PublicAccessBlockConfiguration: {
-          BlockPublicAcls: false,
-          BlockPublicPolicy: false,
-          IgnorePublicAcls: false,
-          RestrictPublicBuckets: false
-        }
-      }));
-
-      const bucketPolicy = {
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Sid: 'PublicReadGetObject',
-            Effect: 'Allow',
-            Principal: '*',
-            Action: [
-              's3:GetObject',
-              's3:GetObjectVersion',
-              's3:GetObjectTagging'
-            ],
-            Resource: [
-              `arn:aws:s3:::${userBucketName}/*`
-            ]
+      try {
+        await s3Client.send(new CreateBucketCommand({
+          Bucket: userBucketName,
+          CreateBucketConfiguration: {
+            LocationConstraint: process.env.AWS_REGION
           }
-        ]
-      };
+        }));
 
-      await s3Client.send(new PutBucketPolicyCommand({
-        Bucket: userBucketName,
-        Policy: JSON.stringify(bucketPolicy)
-      }));
-
-      const corsRules = {
-        CORSRules: [
-          {
-            AllowedHeaders: ["*"],
-            AllowedMethods: ["GET", "PUT", "POST", "DELETE", "HEAD"],
-            AllowedOrigins: ["*"],
-            ExposeHeaders: ["ETag"],
-            MaxAgeSeconds: 3000
-          }
-        ]
-      };
-
-      await s3Client.send(new PutBucketCorsCommand({
-        Bucket: userBucketName,
-        CORSConfiguration: corsRules
-      }));
-
-    } catch (error) {
-      if (error.Code !== 'BucketAlreadyOwnedByYou' && 
-          error.Code !== 'BucketAlreadyExists') {
-        console.error('Bucket configuration error:', error);
-        throw error;
+        // Configure bucket after creation
+        await Promise.all([
+          s3Client.send(new PutPublicAccessBlockCommand({
+            Bucket: userBucketName,
+            PublicAccessBlockConfiguration: {
+              BlockPublicAcls: false,
+              BlockPublicPolicy: false,
+              IgnorePublicAcls: false,
+              RestrictPublicBuckets: false
+            }
+          })),
+          s3Client.send(new PutBucketPolicyCommand({
+            Bucket: userBucketName,
+            Policy: JSON.stringify({
+              Version: '2012-10-17',
+              Statement: [{
+                Sid: 'PublicReadGetObject',
+                Effect: 'Allow',
+                Principal: '*',
+                Action: [
+                  's3:GetObject',
+                  's3:GetObjectVersion',
+                  's3:GetObjectTagging'
+                ],
+                Resource: [`arn:aws:s3:::${userBucketName}/*`]
+              }]
+            })
+          })),
+          s3Client.send(new PutBucketCorsCommand({
+            Bucket: userBucketName,
+            CORSConfiguration: {
+              CORSRules: [{
+                AllowedHeaders: ["*"],
+                AllowedMethods: ["GET", "PUT", "POST", "DELETE", "HEAD"],
+                AllowedOrigins: ["*"],
+                ExposeHeaders: ["ETag"],
+                MaxAgeSeconds: 3000
+              }]
+            }
+          }))
+        ]);
+      } catch (error) {
+        // Only ignore if bucket already exists
+        if (error.Code !== 'BucketAlreadyOwnedByYou' && 
+            error.Code !== 'BucketAlreadyExists') {
+          throw error;
+        }
       }
-    }
 
-    const { file } = req.files;
-    const title = req.body.title || file.name;
-    
-    try {
-      console.log('Uploading file:', {
-        name: file.name,
-        size: file.size,
-        type: file.mimetype
+      const title = req.body.title || file.name;
+      const audioKey = `tracks/${Date.now()}-${file.name}`;
+      
+      console.log('Uploading file to S3:', {
+        bucket: userBucketName,
+        key: audioKey,
+        size: file.size
       });
 
-      const audioKey = `tracks/${Date.now()}-${file.name}`;
       await s3Client.send(new PutObjectCommand({
         Bucket: userBucketName,
         Key: audioKey,
         Body: file.data,
-        ContentType: file.mimetype
+        ContentType: file.mimetype,
+        ContentDisposition: 'inline',
+        CacheControl: 'public, max-age=31536000'
       }));
 
       const documentData = {
@@ -128,47 +127,72 @@ const uploadTrack = async (req, res) => {
       };
 
       if (req.files.coverImage) {
-        console.log('Uploading cover image:', {
-          name: req.files.coverImage.name,
-          size: req.files.coverImage.size,
-          type: req.files.coverImage.mimetype
+        const coverImage = req.files.coverImage;
+        console.log('Processing cover image:', {
+          name: coverImage.name,
+          size: coverImage.size,
+          type: coverImage.mimetype
         });
 
-        const coverKey = `covers/${Date.now()}-${req.files.coverImage.name}`;
+        // Validate cover image size
+        if (coverImage.size > 5 * 1024 * 1024) {
+          return res.status(413).json({
+            error: 'Cover image too large',
+            maxSize: '5MB'
+          });
+        }
+
+        const coverKey = `covers/${Date.now()}-${coverImage.name}`;
         await s3Client.send(new PutObjectCommand({
           Bucket: userBucketName,
           Key: coverKey,
-          Body: req.files.coverImage.data,
-          ContentType: req.files.coverImage.mimetype
+          Body: coverImage.data,
+          ContentType: coverImage.mimetype,
+          CacheControl: 'public, max-age=31536000'
         }));
+
         documentData.coverUrl = `https://${userBucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${coverKey}`;
       }
+
+      console.log('Saving to Firebase:', documentData);
 
       const trackRef = await db.collection('users')
         .doc(userId)
         .collection('tracks')
         .add(documentData);
 
-      console.log('Track saved successfully:', {
+      console.log('Upload completed successfully:', {
         trackId: trackRef.id,
-        documentData
+        audioUrl: documentData.audioUrl
       });
 
       res.status(201).json({ 
         message: 'Track uploaded successfully',
-        trackId: trackRef.id
+        trackId: trackRef.id,
+        track: {
+          id: trackRef.id,
+          ...documentData
+        }
       });
+
     } catch (error) {
-      console.error('Error during file upload or Firebase save:', error);
+      console.error('Error during file processing:', error);
       throw error;
     }
+
   } catch (error) {
-    console.error('Error in uploadTrack:', error);
-    console.error('Error stack:', error.stack);
+    console.error('Upload error:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+
     res.status(500).json({ 
       error: 'Failed to upload track',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      details: process.env.NODE_ENV === 'development' ? {
+        message: error.message,
+        code: error.code
+      } : undefined
     });
   }
 };
@@ -184,7 +208,6 @@ const getTracks = async (req, res) => {
       .get();
 
     const tracks = [];
-    
     tracksSnapshot.forEach((doc) => {
       tracks.push({
         id: doc.id,
@@ -225,6 +248,7 @@ const deleteTrack = async (req, res) => {
     console.log('Track data:', data);
 
     try {
+      // Delete audio file
       const audioUrl = new URL(data.audioUrl);
       const audioKey = decodeURIComponent(audioUrl.pathname.substring(1));
       console.log('Deleting audio file:', audioKey);
@@ -234,6 +258,7 @@ const deleteTrack = async (req, res) => {
         Key: audioKey
       }));
 
+      // Delete cover image if exists
       if (data.coverUrl) {
         const coverUrl = new URL(data.coverUrl);
         const coverKey = decodeURIComponent(coverUrl.pathname.substring(1));
@@ -245,6 +270,7 @@ const deleteTrack = async (req, res) => {
         }));
       }
 
+      // Delete document from Firestore
       await db.collection('users')
         .doc(userId)
         .collection('tracks')

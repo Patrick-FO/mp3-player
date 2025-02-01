@@ -16,54 +16,57 @@ function FileEditor({ setAudioDatabase }) {
             const formData = new FormData();
             
             if (file && file.size > 0) {
-                formData.append('file', file, file.name);  
+                // Add file metadata
+                formData.append('filename', file.name);
+                formData.append('filetype', file.type);
+                formData.append('file', file);
             }
             
             formData.append('title', title);
             if (cover) {
-                formData.append('coverImage', cover, cover.name);  
+                formData.append('coverImage', cover);
             }
-
+    
             setUploadStatus('Uploading...');
             
             const response = await fetch(`${API_BASE_URL}/api/tracks/upload`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
                 },
                 body: formData
             });
-
-            let errorMessage;
+    
+            const responseText = await response.text();
+            
+            let jsonData;
             try {
-                const responseData = await response.text();
-                const jsonData = JSON.parse(responseData);
-                errorMessage = jsonData.error;
-                
-                if (!response.ok) {
-                    throw new Error(errorMessage || 'Upload failed');
-                }
-
-                // If we get here, the upload was successful
-                const tracksResponse = await fetch(`${API_BASE_URL}/api/tracks`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                
-                const tracks = await tracksResponse.json();
-                setAudioDatabase(tracks);
-                
-                setUploadStatus('Upload successful!');
-                setFile(null);
-                setTitle('Your MP3');
-                setCover(null);
-                e.target.reset();
-                
+                jsonData = JSON.parse(responseText);
             } catch (e) {
-                console.error('Response parsing error:', e);
-                throw new Error(errorMessage || 'Upload failed');
+                console.error('Failed to parse response:', responseText);
+                throw new Error('Invalid server response');
             }
+    
+            if (!response.ok) {
+                throw new Error(jsonData.error || 'Upload failed');
+            }
+    
+            // Refresh track list
+            const tracksResponse = await fetch(`${API_BASE_URL}/api/tracks`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            const tracks = await tracksResponse.json();
+            setAudioDatabase(tracks);
+            
+            setUploadStatus('Upload successful!');
+            setFile(null);
+            setTitle('Your MP3');
+            setCover(null);
+            e.target.reset();
+            
         } catch (error) {
             console.error('Upload error:', error);
             setUploadStatus(`Upload failed: ${error.message}`);

@@ -18,17 +18,18 @@ app.use(cors({
 
 app.use(fileUpload({
   limits: { 
-    fileSize: 50 * 1024 * 1024,
+    fileSize: 50 * 1024 * 1024, // 50MB
   },
-  useTempFiles: true,
-  tempFileDir: '/tmp/',
+  useTempFiles: false, // Change to false to handle in memory
   debug: true,
   parseNested: true,
-  preserveExtension: true,
-  safeFileNames: true,
   abortOnLimit: true,
-  uploadTimeout: 120000, 
-  createParentPath: true
+  uploadTimeout: 0, // Remove timeout
+  preserveExtension: true,
+  createParentPath: true,
+  defParamCharset: 'utf8',
+  responseOnLimit: "File size limit has been reached",
+  safeFileNames: /[&$+,,/:;=?@<>\[\]\{\}\\|\^~%'"\s]/g, // More strict filename sanitization
 }));
 
 app.use((error, req, res, next) => {
@@ -61,6 +62,8 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+app.use(express.urlencoded({ extended: true }));
 
 app.get('/', (req, res) => {
   res.json({ 
