@@ -16,12 +16,14 @@ function FileEditor({ setAudioDatabase }) {
             const formData = new FormData();
             
             if (file && file.size > 0) {
-                formData.append('file', file.slice(0, file.size), file.name);
+                formData.append('file', file);  
             }
             
-            formData.append('file', file);
             formData.append('title', title);
-            
+            if (cover) {
+                formData.append('coverImage', cover);
+            }
+    
             setUploadStatus('Uploading...');
             
             const response = await fetch(`${API_BASE_URL}/api/tracks/upload`, {
@@ -32,32 +34,24 @@ function FileEditor({ setAudioDatabase }) {
                 body: formData
             });
     
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Upload response:', errorText);
-                throw new Error(errorText || 'Upload failed');
+            let errorMessage;
+            try {
+                const responseData = await response.text();
+                errorMessage = JSON.parse(responseData).error;
+            } catch (e) {
+                errorMessage = 'Upload failed';
             }
     
-            const responseData = await response.text();
             if (!response.ok) {
-                throw new Error(responseData.error || 'Upload failed');
+                throw new Error(errorMessage);
             }
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || 'Upload failed');
-            }
-
+    
             const tracksResponse = await fetch(`${API_BASE_URL}/api/tracks`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
             
-            if (!tracksResponse.ok) {
-                throw new Error('Failed to fetch updated tracks');
-            }
-
             const tracks = await tracksResponse.json();
             setAudioDatabase(tracks);
             
