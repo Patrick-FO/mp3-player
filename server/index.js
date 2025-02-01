@@ -18,7 +18,9 @@ app.use(cors({
   origin: ['https://patrick-fo.github.io', 'http://localhost:5173'],
   methods: ['GET', 'POST', 'DELETE', 'OPTIONS', 'PUT'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  credentials: true,
+  maxAge: 3600
 }));
 
 // Create temp directory if it doesn't exist
@@ -27,19 +29,21 @@ if (!fs.existsSync(tempDir)) {
   fs.mkdirSync(tempDir, { recursive: true });
 }
 
-// File Upload configuration
 app.use(fileUpload({
   useTempFiles: true,
-  tempFileDir: tempDir,
+  tempFileDir: '/tmp/',
+  debug: true,
+  safeFileNames: true,
+  preserveExtension: true,
   createParentPath: true,
-  limits: {
+  limits: { 
     fileSize: 50 * 1024 * 1024,    // 50MB max file size
-    parts: 3                        // Max number of parts (file, title, cover)
   },
   abortOnLimit: true,
-  debug: process.env.NODE_ENV === 'development',
-  uploadTimeout: 0,                 // No timeout
-  parseNested: true
+  uploadTimeout: 0,
+  parseNested: true,
+  defCharset: 'utf8',
+  defParamCharset: 'utf8'
 }));
 
 // Basic request logging

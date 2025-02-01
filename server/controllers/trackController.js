@@ -8,25 +8,31 @@ const uploadTrack = async (req, res) => {
     console.log('==== Upload Request Details ====');
     console.log('Headers:', {
       'content-type': req.headers['content-type'],
-      'content-length': req.headers['content-length'],
-      'transfer-encoding': req.headers['transfer-encoding']
+      'content-length': req.headers['content-length']
     });
+    console.log('Body:', req.body);
+    console.log('Files present:', !!req.files);
+    
+    // Detailed file logging
+    if (req.files) {
+      console.log('Files structure:', JSON.stringify(req.files, null, 2));
+    }
 
     if (!req.files || !req.files.file) {
-      console.log('Files object:', req.files);
-      console.log('Request body:', req.body);
       return res.status(400).json({ 
         error: 'No file uploaded',
-        filesReceived: req.files ? Object.keys(req.files) : 'none',
-        contentType: req.headers['content-type']
+        details: {
+          filesReceived: req.files ? Object.keys(req.files) : 'none',
+          contentType: req.headers['content-type']
+        }
       });
     }
 
     const file = req.files.file;
-    console.log('Received file:', {
+    console.log('File details:', {
       name: file.name,
       size: file.size,
-      mimetype: file.mimetype,
+      type: file.mimetype,
       md5: file.md5
     });
 

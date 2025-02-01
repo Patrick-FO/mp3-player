@@ -18,21 +18,31 @@ function FileEditor({ setAudioDatabase }) {
             const formData = new FormData();
             
             if (file && file.size > 0) {
-                formData.append('file', file);
+                // Add file with specific content type
+                formData.append('file', file, file.name);
             }
             
-            formData.append('title', title);
+            // Add other form fields
+            formData.append('title', title || file.name);
             if (cover) {
-                formData.append('coverImage', cover);
+                formData.append('coverImage', cover, cover.name);
             }
-
+    
             setUploadStatus('Uploading...');
             setUploadProgress(0);
-
-            const response = await axios.post(`${API_BASE_URL}/api/tracks/upload`, formData, {
+    
+            // Create axios instance with specific config
+            const axiosInstance = axios.create({
+                baseURL: API_BASE_URL,
+                timeout: 0,
+                maxContentLength: Infinity,
+                maxBodyLength: Infinity,
+            });
+    
+            const response = await axiosInstance.post('/api/tracks/upload', formData, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data'
+                    'Content-Type': 'multipart/form-data',
                 },
                 onUploadProgress: progressEvent => {
                     const progress = (progressEvent.loaded / progressEvent.total) * 100;
@@ -40,9 +50,9 @@ function FileEditor({ setAudioDatabase }) {
                     setUploadStatus(`Uploading... ${Math.round(progress)}%`);
                 }
             });
-
+    
             if (response.status === 201) {
-                const tracksResponse = await axios.get(`${API_BASE_URL}/api/tracks`, {
+                const tracksResponse = await axiosInstance.get('/api/tracks', {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -57,7 +67,24 @@ function FileEditor({ setAudioDatabase }) {
             }
         } catch (error) {
             console.error('Upload error:', error);
-            const errorMessage = error.response?.data?.error || error.message;
+            let errorMessage = 'Upload failed';
+            
+            if (error.response) {
+                // The request was made and the server responded with a status code
+                // that falls out of the range of 2xx
+                errorMessage = error.response.data.error || error.response.data.message || 'Server error';
+                console.error('Response data:', error.response.data);
+                console.error('Response status:', error.response.status);
+                console.error('Response headers:', error.response.headers);
+            } else if (error.request) {
+                // The request was made but no response was received
+                errorMessage = 'No response from server';
+                console.error('Request:', error.request);
+            } else {
+                // Something happened in setting up the request that triggered an Error
+                errorMessage = error.message;
+            }
+            
             setUploadStatus(`Upload failed: ${errorMessage}`);
             setUploadProgress(0);
         }
