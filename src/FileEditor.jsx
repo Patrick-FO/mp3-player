@@ -7,6 +7,7 @@ function FileEditor({ setAudioDatabase }) {
     const [title, setTitle] = useState('Your MP3'); 
     const [cover, setCover] = useState(null); 
     const [uploadStatus, setUploadStatus] = useState('');
+    const [uploadProgress, setUploadProgress] = useState(0);
 
     const submitHandler = async (e) => {
         e.preventDefault();
@@ -16,9 +17,6 @@ function FileEditor({ setAudioDatabase }) {
             const formData = new FormData();
             
             if (file && file.size > 0) {
-                // Add file metadata
-                formData.append('filename', file.name);
-                formData.append('filetype', file.type);
                 formData.append('file', file);
             }
             
@@ -26,50 +24,62 @@ function FileEditor({ setAudioDatabase }) {
             if (cover) {
                 formData.append('coverImage', cover);
             }
-    
+
             setUploadStatus('Uploading...');
+            setUploadProgress(0);
             
-            const response = await fetch(`${API_BASE_URL}/api/tracks/upload`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: formData
-            });
-    
-            const responseText = await response.text();
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `${API_BASE_URL}/api/tracks/upload`, true);
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
             
-            let jsonData;
-            try {
-                jsonData = JSON.parse(responseText);
-            } catch (e) {
-                console.error('Failed to parse response:', responseText);
-                throw new Error('Invalid server response');
-            }
-    
-            if (!response.ok) {
-                throw new Error(jsonData.error || 'Upload failed');
-            }
-    
-            // Refresh track list
-            const tracksResponse = await fetch(`${API_BASE_URL}/api/tracks`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable) {
+                    const progress = (event.loaded / event.total) * 100;
+                    setUploadProgress(Math.round(progress));
+                    setUploadStatus(`Uploading... ${Math.round(progress)}%`);
                 }
-            });
-            
-            const tracks = await tracksResponse.json();
-            setAudioDatabase(tracks);
-            
-            setUploadStatus('Upload successful!');
-            setFile(null);
-            setTitle('Your MP3');
-            setCover(null);
-            e.target.reset();
+            };
+
+            xhr.onload = async function() {
+                if (xhr.status === 201) {
+                    // Success
+                    const tracksResponse = await fetch(`${API_BASE_URL}/api/tracks`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    
+                    const tracks = await tracksResponse.json();
+                    setAudioDatabase(tracks);
+                    
+                    setUploadStatus('Upload successful!');
+                    setFile(null);
+                    setTitle('Your MP3');
+                    setCover(null);
+                    e.target.reset();
+                } else {
+                    // Error
+                    let errorMessage;
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        errorMessage = response.error;
+                    } catch (e) {
+                        errorMessage = 'Upload failed';
+                    }
+                    throw new Error(errorMessage);
+                }
+            };
+
+            xhr.onerror = function() {
+                throw new Error('Network error occurred');
+            };
+
+            xhr.send(formData);
             
         } catch (error) {
             console.error('Upload error:', error);
             setUploadStatus(`Upload failed: ${error.message}`);
+            setUploadProgress(0);
         }
     };
 
@@ -88,16 +98,11 @@ function FileEditor({ setAudioDatabase }) {
     const handleCoverChange = (e) => {
         const selectedCover = e.target.files[0];
         if (selectedCover) {
-            if (selectedCover.size > 5 * 1024 * 1024) { 
+            if (selectedCover.size > 5 * 1024 * 1024) {
                 alert('Cover image is too large. Please select an image under 5MB.');
-                e.target.value = ''; 
+                e.target.value = '';
                 return;
             }
-            console.log('Cover selected:', {
-                name: selectedCover.name,
-                size: selectedCover.size,
-                type: selectedCover.type
-            });
             setCover(selectedCover);
         }
     };
@@ -145,6 +150,14 @@ function FileEditor({ setAudioDatabase }) {
             {uploadStatus && (
                 <div className="upload-status">
                     {uploadStatus}
+                    {uploadProgress > 0 && uploadProgress < 100 && (
+                        <div className="progress-bar">
+                            <div 
+                                className="progress" 
+                                style={{width: `${uploadProgress}%`}}
+                            ></div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

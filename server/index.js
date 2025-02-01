@@ -17,41 +17,19 @@ app.use(cors({
 }));
 
 app.use(fileUpload({
-  limits: { 
-    fileSize: 50 * 1024 * 1024, // 50MB
-  },
-  useTempFiles: false, // Change to false to handle in memory
-  debug: true,
-  parseNested: true,
-  abortOnLimit: true,
-  uploadTimeout: 0, // Remove timeout
-  preserveExtension: true,
   createParentPath: true,
-  defParamCharset: 'utf8',
-  responseOnLimit: "File size limit has been reached",
-  safeFileNames: /[&$+,,/:;=?@<>\[\]\{\}\\|\^~%'"\s]/g, // More strict filename sanitization
+  limits: {
+    fileSize: 50 * 1024 * 1024 
+  },
+  abortOnLimit: true,
+  useTempFiles: true,
+  tempFileDir: '/tmp/',
+  debug: true
 }));
-
-app.use((error, req, res, next) => {
-  console.error('Middleware Error:', error);
-  if (error.code === 'LIMIT_FILE_SIZE') {
-    return res.status(413).json({
-      error: 'File too large',
-      maxSize: '50MB'
-    });
-  }
-  if (error.message && error.message.includes('Unexpected end of form')) {
-    return res.status(400).json({
-      error: 'Upload failed - connection interrupted or invalid form data'
-    });
-  }
-  next(error);
-});
-
-app.options('*', cors());
 
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  console.log('Headers:', req.headers);
   if (req.files) {
     console.log('Files in request:', Object.keys(req.files).map(key => ({
       fieldname: key,
@@ -62,8 +40,6 @@ app.use((req, res, next) => {
   }
   next();
 });
-
-app.use(express.urlencoded({ extended: true }));
 
 app.get('/', (req, res) => {
   res.json({ 
@@ -81,6 +57,13 @@ app.use((err, req, res, next) => {
     stack: err.stack,
     timestamp: new Date().toISOString()
   });
+
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({
+      error: 'File too large',
+      maxSize: '50MB'
+    });
+  }
 
   res.status(500).json({
     error: err.message || 'Internal Server Error',
