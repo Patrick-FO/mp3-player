@@ -50,7 +50,6 @@ const uploadTrack = async (req, res) => {
           const userId = req.user.uid;
           const userBucketName = `${process.env.AWS_BUCKET_NAME}-${userId.toLowerCase().replace(/[^a-z0-9-]/g, '-')}`;
 
-          // Configure bucket
           try {
             await s3Client.send(new CreateBucketCommand({
               Bucket: userBucketName,
@@ -59,7 +58,6 @@ const uploadTrack = async (req, res) => {
               }
             }));
 
-            // Configure bucket policies
             await Promise.all([
               s3Client.send(new PutPublicAccessBlockCommand({
                 Bucket: userBucketName,
@@ -91,7 +89,6 @@ const uploadTrack = async (req, res) => {
             }
           }
 
-          // Upload audio file
           const audioKey = `tracks/${Date.now()}-${fileData.file.filename}`;
           await s3Client.send(new PutObjectCommand({
             Bucket: userBucketName,
@@ -107,7 +104,6 @@ const uploadTrack = async (req, res) => {
             coverUrl: null
           };
 
-          // Handle cover image if exists
           if (fileData.coverImage) {
             const coverKey = `covers/${Date.now()}-${fileData.coverImage.filename}`;
             await s3Client.send(new PutObjectCommand({
@@ -198,7 +194,6 @@ const deleteTrack = async (req, res) => {
     console.log('Track data:', data);
 
     try {
-      // Delete audio file
       const audioUrl = new URL(data.audioUrl);
       const audioKey = decodeURIComponent(audioUrl.pathname.substring(1));
       console.log('Deleting audio file:', audioKey);
@@ -208,7 +203,6 @@ const deleteTrack = async (req, res) => {
         Key: audioKey
       }));
 
-      // Delete cover image if exists
       if (data.coverUrl) {
         const coverUrl = new URL(data.coverUrl);
         const coverKey = decodeURIComponent(coverUrl.pathname.substring(1));
@@ -220,7 +214,6 @@ const deleteTrack = async (req, res) => {
         }));
       }
 
-      // Delete document from Firestore
       await db.collection('users')
         .doc(userId)
         .collection('tracks')

@@ -16,10 +16,10 @@ app.use(cors({
 }));
 
 app.use(busboy({
-  highWaterMark: 2 * 1024 * 1024, // Set 2MiB buffer
+  highWaterMark: 2 * 1024 * 1024, 
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB limit
-    files: 2 // Allow up to 2 files (mp3 and cover image)
+    fileSize: 50 * 1024 * 1024, 
+    files: 2 
   }
 }));
 

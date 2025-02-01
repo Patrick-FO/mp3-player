@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';  // Make sure to install axios: npm install axios
+import axios from 'axios';  
 import { auth } from './firebase.js'; 
 import { API_BASE_URL } from './config.js';
 
@@ -18,11 +18,9 @@ function FileEditor({ setAudioDatabase }) {
             const formData = new FormData();
             
             if (file && file.size > 0) {
-                // Add file with specific content type
                 formData.append('file', file, file.name);
             }
             
-            // Add other form fields
             formData.append('title', title || file.name);
             if (cover) {
                 formData.append('coverImage', cover, cover.name);
@@ -31,7 +29,6 @@ function FileEditor({ setAudioDatabase }) {
             setUploadStatus('Uploading...');
             setUploadProgress(0);
     
-            // Create axios instance with specific config
             const axiosInstance = axios.create({
                 baseURL: API_BASE_URL,
                 timeout: 0,
@@ -70,18 +67,14 @@ function FileEditor({ setAudioDatabase }) {
             let errorMessage = 'Upload failed';
             
             if (error.response) {
-                // The request was made and the server responded with a status code
-                // that falls out of the range of 2xx
                 errorMessage = error.response.data.error || error.response.data.message || 'Server error';
                 console.error('Response data:', error.response.data);
                 console.error('Response status:', error.response.status);
                 console.error('Response headers:', error.response.headers);
             } else if (error.request) {
-                // The request was made but no response was received
                 errorMessage = 'No response from server';
                 console.error('Request:', error.request);
             } else {
-                // Something happened in setting up the request that triggered an Error
                 errorMessage = error.message;
             }
             
