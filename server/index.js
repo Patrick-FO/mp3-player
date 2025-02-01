@@ -22,7 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(fileUpload({
   limits: { fileSize: 50 * 1024 * 1024 },
   debug: true,
-  useTempFiles: false,  
+  useTempFiles: true,  
   preserveExtension: true,
   safeFileNames: true,
   abortOnLimit: true,
