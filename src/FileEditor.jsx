@@ -15,17 +15,12 @@ function FileEditor({ setAudioDatabase }) {
             const token = await auth.currentUser.getIdToken();
             const formData = new FormData();
             
-            if (file) {
-                console.log('Uploading file:', file.name);
-                formData.append('file', file);
+            if (file && file.size > 0) {
+                formData.append('file', file.slice(0, file.size), file.name);
             }
             
-            formData.append('title', title || 'Untitled');
+            formData.append('title', title);
             
-            if (cover) {
-                formData.append('coverImage', cover);
-            }
-    
             setUploadStatus('Uploading...');
             
             const response = await fetch(`${API_BASE_URL}/api/tracks/upload`, {
@@ -33,9 +28,14 @@ function FileEditor({ setAudioDatabase }) {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 },
-                mode: 'cors',
                 body: formData
             });
+    
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Upload response:', errorText);
+                throw new Error(errorText || 'Upload failed');
+            }
     
             const responseData = await response.json();
             if (!response.ok) {
@@ -75,11 +75,11 @@ function FileEditor({ setAudioDatabase }) {
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
         if (selectedFile) {
-            console.log('File selected:', {
-                name: selectedFile.name,
-                size: selectedFile.size,
-                type: selectedFile.type
-            });
+            if (selectedFile.size > 10 * 1024 * 1024) { 
+                alert('File is too large. Please select a file under 10MB.');
+                e.target.value = ''; 
+                return;
+            }
             setFile(selectedFile);
         }
     };

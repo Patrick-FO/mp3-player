@@ -20,10 +20,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(fileUpload({
+  useTempFiles: true,
+  tempFileDir: '/tmp/',
+  limits: { fileSize: 10 * 1024 * 1024 }, 
+  abortOnLimit: true,
+  responseOnLimit: 'File size limit exceeded',
+  uploadTimeout: 60000, 
   createParentPath: true,
-  limits: { fileSize: 50 * 1024 * 1024 },
-  useTempFiles: false,
-  debug: true
+  parseNested: false
 }));
 
 app.options('*', cors());
