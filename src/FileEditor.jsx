@@ -19,6 +19,7 @@ function FileEditor({ setAudioDatabase }) {
                 formData.append('file', file.slice(0, file.size), file.name);
             }
             
+            formData.append('file', file);
             formData.append('title', title);
             
             setUploadStatus('Uploading...');
