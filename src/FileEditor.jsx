@@ -23,7 +23,7 @@ function FileEditor({ setAudioDatabase }) {
             if (cover) {
                 formData.append('coverImage', cover, cover.name);  
             }
-    
+
             setUploadStatus('Uploading...');
             
             const response = await fetch(`${API_BASE_URL}/api/tracks/upload`, {
@@ -31,37 +31,39 @@ function FileEditor({ setAudioDatabase }) {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 },
-                credentials: 'include',  
                 body: formData
             });
-    
+
             let errorMessage;
             try {
                 const responseData = await response.text();
-                errorMessage = JSON.parse(responseData).error;
-            } catch (e) {
-                errorMessage = 'Upload failed';
-            }
-    
-            if (!response.ok) {
-                throw new Error(errorMessage);
-            }
-    
-            const tracksResponse = await fetch(`${API_BASE_URL}/api/tracks`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
+                const jsonData = JSON.parse(responseData);
+                errorMessage = jsonData.error;
+                
+                if (!response.ok) {
+                    throw new Error(errorMessage || 'Upload failed');
                 }
-            });
-            
-            const tracks = await tracksResponse.json();
-            setAudioDatabase(tracks);
-            
-            setUploadStatus('Upload successful!');
-            setFile(null);
-            setTitle('Your MP3');
-            setCover(null);
-            e.target.reset();
-            
+
+                // If we get here, the upload was successful
+                const tracksResponse = await fetch(`${API_BASE_URL}/api/tracks`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const tracks = await tracksResponse.json();
+                setAudioDatabase(tracks);
+                
+                setUploadStatus('Upload successful!');
+                setFile(null);
+                setTitle('Your MP3');
+                setCover(null);
+                e.target.reset();
+                
+            } catch (e) {
+                console.error('Response parsing error:', e);
+                throw new Error(errorMessage || 'Upload failed');
+            }
         } catch (error) {
             console.error('Upload error:', error);
             setUploadStatus(`Upload failed: ${error.message}`);
@@ -83,6 +85,11 @@ function FileEditor({ setAudioDatabase }) {
     const handleCoverChange = (e) => {
         const selectedCover = e.target.files[0];
         if (selectedCover) {
+            if (selectedCover.size > 5 * 1024 * 1024) { 
+                alert('Cover image is too large. Please select an image under 5MB.');
+                e.target.value = ''; 
+                return;
+            }
             console.log('Cover selected:', {
                 name: selectedCover.name,
                 size: selectedCover.size,
@@ -97,7 +104,7 @@ function FileEditor({ setAudioDatabase }) {
             <h2>File Editor</h2>
             <form onSubmit={submitHandler}>
                 <div className="form-section">
-                    <label htmlFor="file">MP3 File: </label>
+                    <label htmlFor="file">MP3 File (max 50MB): </label>
                     <input 
                         type="file" 
                         id="file" 
@@ -120,7 +127,7 @@ function FileEditor({ setAudioDatabase }) {
                 </div>
 
                 <div className="form-section">
-                    <label htmlFor="cover">Cover Image (Optional): </label>
+                    <label htmlFor="cover">Cover Image (Optional, max 5MB): </label>
                     <input 
                         type="file" 
                         id="cover" 

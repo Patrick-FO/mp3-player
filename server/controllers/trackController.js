@@ -4,18 +4,31 @@ import { db } from '../config/firebase.js';
 import s3Client from '../config/s3.js';
 
 const uploadTrack = async (req, res) => {
-  
   try {
-    console.log('Upload request received');
-    console.log('Headers:', req.headers);
-    console.log('Body:', req.body);
-    console.log('Files:', req.files ? Object.keys(req.files) : 'No files');
-    console.log('Request content length:', req.headers['content-length']);
-
+    console.log('==== Upload Request Details ====');
+    console.log('Headers:', {
+      'content-type': req.headers['content-type'],
+      'content-length': req.headers['content-length'],
+      'transfer-encoding': req.headers['transfer-encoding']
+    });
+    
     if (!req.files || !req.files.file) {
-      console.log('Request files detail:', req.files);
-      return res.status(400).json({ error: 'No file uploaded' });
+      console.log('Files object:', req.files);
+      console.log('Request body:', req.body);
+      return res.status(400).json({ 
+        error: 'No file uploaded',
+        filesReceived: req.files ? Object.keys(req.files) : 'none',
+        contentType: req.headers['content-type']
+      });
     }
+
+    // Log file details
+    console.log('Received file:', {
+      name: req.files.file.name,
+      size: req.files.file.size,
+      mimetype: req.files.file.mimetype,
+      tempFilePath: req.files.file.tempFilePath
+    });
 
     const userId = req.user.uid;
     const userBucketName = `${process.env.AWS_BUCKET_NAME}-${userId.toLowerCase().replace(/[^a-z0-9-]/g, '-')}`;

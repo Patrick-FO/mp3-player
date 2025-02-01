@@ -10,35 +10,38 @@ const PORT = process.env.PORT || 8080;
 app.use(cors({
   origin: ['https://patrick-fo.github.io', 'http://localhost:5173'],
   methods: ['GET', 'POST', 'DELETE', 'OPTIONS', 'PUT'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Content-Length', 'X-Requested-With'],
-  credentials: true,
-  optionsSuccessStatus: 200,
-  maxAge: 3600, 
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 3600,
   preflightContinue: false
 }));
-
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 app.use(fileUpload({
   limits: { 
     fileSize: 50 * 1024 * 1024,
-    fields: 10,
-    files: 2,
-    parts: 12
   },
-  abortOnLimit: true,              
-  responseOnLimit: "File size limit has been reached",
   useTempFiles: true,
   tempFileDir: '/tmp/',
-  debug: process.env.NODE_ENV === 'development'
+  debug: true,
+  parseNested: true,
+  preserveExtension: true,
+  safeFileNames: true,
+  abortOnLimit: true,
+  uploadTimeout: 120000, 
+  createParentPath: true
 }));
 
 app.use((error, req, res, next) => {
+  console.error('Middleware Error:', error);
   if (error.code === 'LIMIT_FILE_SIZE') {
     return res.status(413).json({
       error: 'File too large',
       maxSize: '50MB'
+    });
+  }
+  if (error.message && error.message.includes('Unexpected end of form')) {
+    return res.status(400).json({
+      error: 'Upload failed - connection interrupted or invalid form data'
     });
   }
   next(error);
@@ -57,15 +60,6 @@ app.use((req, res, next) => {
     })));
   }
   next();
-});
-
-app.use((err, req, res, next) => {
-  if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(413).json({
-          error: 'File too large'
-      });
-  }
-  next(err);
 });
 
 app.get('/', (req, res) => {
