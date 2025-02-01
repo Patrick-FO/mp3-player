@@ -13,7 +13,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'Content-Length', 'X-Requested-With'],
   credentials: true,
   optionsSuccessStatus: 200,
-  maxAge: 3600
+  maxAge: 3600, 
+  preflightContinue: false
 }));
 
 app.use(express.json());
@@ -22,11 +23,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use(fileUpload({
   limits: { fileSize: 50 * 1024 * 1024 },
   debug: true,
-  useTempFiles: true,  
+  useTempFiles: true,
+  tempFileDir: '/tmp/',
   preserveExtension: true,
   safeFileNames: true,
   abortOnLimit: true,
-  uploadTimeout: 0, 
+  uploadTimeout: 60000, 
+  createParentPath: true,
+  parseNested: true
 }));
 
 app.options('*', cors());

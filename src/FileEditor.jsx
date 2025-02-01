@@ -16,12 +16,12 @@ function FileEditor({ setAudioDatabase }) {
             const formData = new FormData();
             
             if (file && file.size > 0) {
-                formData.append('file', file);  
+                formData.append('file', file, file.name);  
             }
             
             formData.append('title', title);
             if (cover) {
-                formData.append('coverImage', cover);
+                formData.append('coverImage', cover, cover.name);  
             }
     
             setUploadStatus('Uploading...');
@@ -31,6 +31,7 @@ function FileEditor({ setAudioDatabase }) {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 },
+                credentials: 'include',  
                 body: formData
             });
     
@@ -70,8 +71,8 @@ function FileEditor({ setAudioDatabase }) {
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
         if (selectedFile) {
-            if (selectedFile.size > 10 * 1024 * 1024) { 
-                alert('File is too large. Please select a file under 10MB.');
+            if (selectedFile.size > 50 * 1024 * 1024) { 
+                alert('File is too large. Please select a file under 50MB.');
                 e.target.value = ''; 
                 return;
             }

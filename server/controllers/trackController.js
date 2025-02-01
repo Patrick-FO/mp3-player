@@ -8,10 +8,12 @@ const uploadTrack = async (req, res) => {
   try {
     console.log('Upload request received');
     console.log('Headers:', req.headers);
+    console.log('Body:', req.body);
     console.log('Files:', req.files ? Object.keys(req.files) : 'No files');
+    console.log('Request content length:', req.headers['content-length']);
 
     if (!req.files || !req.files.file) {
-      console.log('No files found in request');
+      console.log('Request files detail:', req.files);
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
@@ -149,9 +151,11 @@ const uploadTrack = async (req, res) => {
     }
   } catch (error) {
     console.error('Error in uploadTrack:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ 
       error: 'Failed to upload track',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
