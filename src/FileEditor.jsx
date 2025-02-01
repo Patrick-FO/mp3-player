@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import axios from 'axios';  // Make sure to install axios: npm install axios
 import { auth } from './firebase.js'; 
 import { API_BASE_URL } from './config.js';
 
@@ -27,58 +28,37 @@ function FileEditor({ setAudioDatabase }) {
 
             setUploadStatus('Uploading...');
             setUploadProgress(0);
-            
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', `${API_BASE_URL}/api/tracks/upload`, true);
-            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-            
-            xhr.upload.onprogress = (event) => {
-                if (event.lengthComputable) {
-                    const progress = (event.loaded / event.total) * 100;
+
+            const response = await axios.post(`${API_BASE_URL}/api/tracks/upload`, formData, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data'
+                },
+                onUploadProgress: progressEvent => {
+                    const progress = (progressEvent.loaded / progressEvent.total) * 100;
                     setUploadProgress(Math.round(progress));
                     setUploadStatus(`Uploading... ${Math.round(progress)}%`);
                 }
-            };
+            });
 
-            xhr.onload = async function() {
-                if (xhr.status === 201) {
-                    // Success
-                    const tracksResponse = await fetch(`${API_BASE_URL}/api/tracks`, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
-                    
-                    const tracks = await tracksResponse.json();
-                    setAudioDatabase(tracks);
-                    
-                    setUploadStatus('Upload successful!');
-                    setFile(null);
-                    setTitle('Your MP3');
-                    setCover(null);
-                    e.target.reset();
-                } else {
-                    // Error
-                    let errorMessage;
-                    try {
-                        const response = JSON.parse(xhr.responseText);
-                        errorMessage = response.error;
-                    } catch (e) {
-                        errorMessage = 'Upload failed';
+            if (response.status === 201) {
+                const tracksResponse = await axios.get(`${API_BASE_URL}/api/tracks`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
                     }
-                    throw new Error(errorMessage);
-                }
-            };
-
-            xhr.onerror = function() {
-                throw new Error('Network error occurred');
-            };
-
-            xhr.send(formData);
-            
+                });
+                
+                setAudioDatabase(tracksResponse.data);
+                setUploadStatus('Upload successful!');
+                setFile(null);
+                setTitle('Your MP3');
+                setCover(null);
+                e.target.reset();
+            }
         } catch (error) {
             console.error('Upload error:', error);
-            setUploadStatus(`Upload failed: ${error.message}`);
+            const errorMessage = error.response?.data?.error || error.message;
+            setUploadStatus(`Upload failed: ${errorMessage}`);
             setUploadProgress(0);
         }
     };
