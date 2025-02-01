@@ -17,21 +17,32 @@ app.use(cors({
   preflightContinue: false
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 app.use(fileUpload({
-  limits: { fileSize: 50 * 1024 * 1024 },
-  debug: true,
+  limits: { 
+    fileSize: 50 * 1024 * 1024,
+    fields: 10,
+    files: 2,
+    parts: 12
+  },
+  abortOnLimit: true,              
+  responseOnLimit: "File size limit has been reached",
   useTempFiles: true,
   tempFileDir: '/tmp/',
-  preserveExtension: true,
-  safeFileNames: true,
-  abortOnLimit: true,
-  uploadTimeout: 60000, 
-  createParentPath: true,
-  parseNested: true
+  debug: process.env.NODE_ENV === 'development'
 }));
+
+app.use((error, req, res, next) => {
+  if (error.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({
+      error: 'File too large',
+      maxSize: '50MB'
+    });
+  }
+  next(error);
+});
 
 app.options('*', cors());
 

@@ -7,7 +7,6 @@ startCommand="cd server && npm start"
 rootDirectory="server"
 healthcheckPath = "/"
 healthcheckTimeout = 300
-restartPolicyType = "on-failure"
 
 [http]
 maxBodySize = "50mb"
