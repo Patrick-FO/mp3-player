@@ -37,7 +37,7 @@ function FileEditor({ setAudioDatabase }) {
                 throw new Error(errorText || 'Upload failed');
             }
     
-            const responseData = await response.json();
+            const responseData = await response.text();
             if (!response.ok) {
                 throw new Error(responseData.error || 'Upload failed');
             }
